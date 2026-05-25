@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>피라미드 암흑 속 유적 찾기</title>
+    <style>
+        body { font-family: 'Malgun Gothic', sans-serif; background-color: #0f172a; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; color: #f8fafc; user-select: none; }
+        h1 { color: #f59e0b; margin-bottom: 5px; text-shadow: 0 4px 6px rgba(0,0,0,0.5); }
+        .guide { color: #94a3b8; margin-top: 0; margin-bottom: 15px; text-align: center; font-size: 14px; }
+
+        /* 🏛️ 인트로 설명창 스타일 */
+        #intro-container { background-color: #1e293b; border: 4px solid #b45309; border-radius: 12px; padding: 30px; max-width: 620px; text-align: center; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.7); margin-top: 40px; }
+        #intro-container h2 { color: #f59e0b; margin-top: 0; font-size: 24px; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+        #intro-container p { color: #cbd5e1; line-height: 1.6; font-size: 15px; }
+        #intro-container ul { text-align: left; line-height: 1.8; color: #e2e8f0; font-size: 14px; margin: 20px 0; padding-left: 20px; }
+        #intro-container ul li { margin-bottom: 8px; list-style-type: '▪ '; }
+        #intro-container strong { color: #fbbf24; }
+        #start-btn { padding: 14px 40px; font-size: 16px; font-weight: bold; background: #10b981; color: white; border: none; border-radius: 8px; cursor: pointer; margin-top: 15px; box-shadow: 0 0 15px rgba(16, 185, 129, 0.4); transition: all 0.2s; }
+        #start-btn:hover { background: #059669; transform: scale(1.05); }
+
+        /* 본 게임 화면 래퍼 (처음에는 숨김) */
+        #game-wrapper { display: none; flex-direction: column; align-items: center; width: 100%; }
+
+        #game-container { display: flex; gap: 20px; margin-top: 10px; }
+        canvas { background: #020617; border: 5px solid #b45309; border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.7); }
+        
+        #side-panel { display: flex; flex-direction: column; gap: 15px; width: 280px; }
+        #viewfinder-container { background: #1e293b; padding: 15px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); text-align: center; border: 2px solid #f59e0b; }
+        #viewfinder-container h2 { font-size: 15px; margin: 0 0 10px 0; color: #f59e0b; }
+        #telescopeCanvas { background: #000; border: 3px solid #d97706; border-radius: 8px; }
+        
+        #info-panel { background: #1e293b; padding: 15px; border-radius: 12px; font-size: 13px; line-height: 1.6; color: #e2e8f0; display: flex; flex-direction: column; gap: 5px; }
+        #status { font-size: 16px; font-weight: bold; margin-top: 10px; text-align: center; }
+        
+        #next-stage-btn { display: none; padding: 12px; font-weight: bold; background: #10b981; color: white; border: none; border-radius: 8px; margin-top: 12px; cursor: pointer; width: 100%; font-size: 14px; box-shadow: 0 0 15px rgba(16, 185, 129, 0.4); transition: all 0.2s; }
+        #next-stage-btn:hover { background: #059669; transform: scale(1.02); }
+
+        .success { color: #10b981; animation: blink 1s infinite; }
+        .fail { color: #ef4444; }
+        .scared { color: #f43f5e; font-weight: bold; animation: shake 0.1s infinite; }
+        @keyframes shake { 0% { transform: translate(1px, 1px); } 100% { transform: translate(-1px, -1px); } }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+    </style>
+</head>
+<body>
+
+    <div id="intro-container">
+        <h2>🤠 작전명: 피라미드 암흑 속 유적 찾기</h2>
+        <p>피라미드 깊은 지하 사각지대에 잠든 고대 문명의 유물을 발굴하러 오신 것을 환영합니다!</p>
+        
+        <ul>
+            <li>☀️ <strong>빛의 직진성:</strong> 외부에서 들어오는 한 줄기 햇빛은 장애물이 없다면 곧게 나아갑니다.</li>
+            <li>🔄 <strong>빛의 반사 법칙:</strong> 미로 내부에 배치된 거울의 <strong>몸통(이동)</strong>과 <strong>초록 노브(회전)</strong>를 조절해 빛을 원하는 방향으로 반사시키세요. 입사각과 반사각은 항상 일치합니다!</li>
+            <li>🔦 <strong>서치라이트 스캔:</strong> 유적 안은 칠흑 같은 암흑입니다. 오직 빛이 부딪혀 닿는 표면 주변만 서치라이트처럼 실시간으로 정체가 탄생합니다.</li>
+            <li>🔭 <strong>유물 클릭 감정:</strong> 빛을 조준하여 모습을 드러낸 물체를 <strong>지도에서 직접 클릭</strong>하면 우측 유물감지센서를 통해 정밀 분석을 완료하고 다음 통로를 열 수 있습니다. <strong>주의! 해골일 수도 있음</strong></li>
+        </ul>
+        
+        <button id="start-btn" onclick="startGame()">탐험 시작하기 (Stage 1로 이동) ➡️</button>
+    </div>
+
+    <div id="game-wrapper">
+        <h1 id="game-title">👑 작전명: 피라미드 암흑 속 유적 찾기 (Stage 1)</h1>
+        <p class="guide">빛이 닿아 모습을 드러낸 물체를 <strong>지도에서 직접 클릭</strong>해 보세요!<br>유물의 정체를 밝혀내야만 다음 스테이지 통로가 열립니다.</p>
+
+        <div id="game-container">
+            <canvas id="mainCanvas" width="800" height="500"></canvas>
+
+            <div id="side-panel">
+                <div id="viewfinder-container">
+                    <h2>🔭 유물감지센서</h2>
+                    <canvas id="telescopeCanvas" width="250" height="150"></canvas>
+                    <div id="status" class="fail">칠흑 같은 암흑</div>
+                    
+                    <button id="next-stage-btn" onclick="nextStage()">다음 스테이지로 ➡️</button>
+                </div>
+                
+                <div id="info-panel">
+                    <strong>[실시간 광학 데이터]</strong>
+                    <div id="angle-container"></div>
+                    <button onclick="resetCurrentStage()" style="padding: 8px; font-weight: bold; background: #475569; color: white; border: none; border-radius: 4px; margin-top: 10px; cursor: pointer;">현재 단계 초기화</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('mainCanvas');
+        const ctx = canvas.getContext('2d');
+        const viewCanvas = document.getElementById('telescopeCanvas');
+        const viewCtx = viewCanvas.getContext('2d');
+        const statusDiv = document.getElementById('status');
+        const angleContainer = document.getElementById('angle-container');
+        const nextBtn = document.getElementById('next-stage-btn');
+        const gameTitle = document.getElementById('game-title');
+
+        let currentStage = 1;
+        let isTreasureFound = false;
+        let isTrapTriggered = false;
+        let triggeredTrapEmoji = '';
+        let isRevealed = false; 
+
+        const state = {
+            camp: { x: 50, y: 60 },
+            archaeologist: { x: 45, y: 70, radius: 20, emoji: '🤠' },
+            treasure: { x: 0, y: 0, radius: 25, emoji: '', name: '' }, 
+            mirrors: [],
+            walls: [],
+            traps: [],
+            hitPoints: [],   
+            raySegments: [], 
+            normalLines: [], 
+            wallHits: [],    
+            inspectedType: null, 
+            dragged: null // 👈 오타(= null)를 객체 문법에 맞게 콜론(: null)으로 수정 완료
+        };
+
+        const stageData = {
+            1: {
+                name: "고대 투탕카멘의 황금 왕관", emoji: "👑",
+                treasure: { x: 540, y: 380 }, 
+                walls: [ { p1: { x: 0, y: 200 }, p2: { x: 800, y: 200 } } ],
+                openings: [{ s: 500, e: 580 }],
+                traps: [{ x: 300, y: 350, radius: 20, emoji: '☠️' }],
+                mirrors: [ { x: 300, y: 60, angleDeg: 15, length: 75 } ]
+            },
+            2: {
+                name: "바스테트 고양이 신상", emoji: "🐈",
+                treasure: { x: 500, y: 430 }, 
+                walls: [
+                    { p1: { x: 200, y: 220 }, p2: { x: 800, y: 220 } }, 
+                    { p1: { x: 0, y: 340 }, p2: { x: 650, y: 340 } }    
+                ],
+                openings: [{ s: 0, e: 200 }, { s: 650, e: 800 }],
+                traps: [{ x: 400, y: 280, radius: 20, emoji: '☠️' }],
+                mirrors: [
+                    { x: 250, y: 60, angleDeg: -20, length: 75 },
+                    { x: 450, y: 260, angleDeg: 35, length: 75 } 
+                ]
+            },
+            3: {
+                name: "파라오의 황금 미라 관", emoji: "⚰️",
+                treasure: { x: 750, y: 450 }, 
+                walls: [
+                    { p1: { x: 0, y: 160 }, p2: { x: 620, y: 160 } }, 
+                    { p1: { x: 180, y: 320 }, p2: { x: 800, y: 320 } }  
+                ],
+                openings: [],
+                traps: [{ x: 450, y: 240, radius: 20, emoji: '☠️' }],
+                mirrors: [
+                    { x: 200, y: 60, angleDeg: 10, length: 75 },
+                    { x: 400, y: 220, angleDeg: -45, length: 75 },
+                    { x: 500, y: 250, angleDeg: 25, length: 75 } 
+                ]
+            }
+        };
+
+        function startGame() {
+            document.getElementById('intro-container').style.display = 'none';
+            document.getElementById('game-wrapper').style.display = 'flex';
+            loadStage(1); 
+        }
+
+        function loadStage(num) {
+            currentStage = num;
+            const data = stageData[num];
+            
+            gameTitle.innerText = `👑 작전명: 피라미드 암흑 속 유적 찾기 (Stage ${num})`;
+
+            state.treasure = { x: data.treasure.x, y: data.treasure.y, radius: 25, emoji: data.emoji, name: data.name };
+            state.walls = JSON.parse(JSON.stringify(data.walls));
+            state.mirrors = JSON.parse(JSON.stringify(data.mirrors));
+            state.traps = JSON.parse(JSON.stringify(data.traps || []));
+            state.hitPoints = [];
+            state.raySegments = [];
+            state.normalLines = [];
+            state.wallHits = [];
+            state.inspectedType = null; 
+            state.dragged = null;
+            isTreasureFound = false;
+            isTrapTriggered = false;
+            triggeredTrapEmoji = '';
+            isRevealed = false; 
+
+            nextBtn.style.display = 'none'; 
+            update();
+        }
+
+        function nextStage() {
+            if (currentStage < 3) {
+                loadStage(currentStage + 1);
+            } else {
+                loadStage(1); 
+            }
+        }
+
+        function resetCurrentStage() { loadStage(currentStage); }
+
+        function getMirrorSegments(m) {
+            let rad = (m.angleDeg * Math.PI) / 180;
+            let dx = Math.cos(rad) * (m.length / 2);
+            let dy = Math.sin(rad) * (m.length / 2);
+            return {
+                p1: { x: m.x - dx, y: m.y - dy },
+                p2: { x: m.x + dx, y: m.y + dy },
+                normal: { x: -Math.sin(rad), y: Math.cos(rad) }
+            };
+        }
+
+        function lineIntersection(p1, p2, p3, p4) {
+            let denom = (p4.y - p3.y) * (p2.x - p1.x) - (p4.x - p3.x) * (p2.y - p1.y);
+            if (denom === 0) return null;
+            let ua = ((p4.x - p3.x) * (p1.y - p3.y) - (p4.y - p3.y) * (p1.x - p3.x)) / denom;
+            let ub = ((p2.x - p1.x) * (p1.y - p3.y) - (p2.y - p1.y) * (p1.x - p3.x)) / denom;
+            if (ua >= 0 && ua <= 1 && ub >= 0 && ub <= 1) {
+                return { x: p1.x + ua * (p2.x - p1.x), y: p1.y + ua * (p2.y - p1.y) };
+            }
+            return null;
+        }
+
+        function pointToSegDist(p, a, b) {
+            let l2 = (b.x - a.x)**2 + (b.y - a.y)**2;
+            if (l2 === 0) return Math.sqrt((p.x - a.x)**2 + (p.y - a.y)**2);
+            let t = ((p.x - a.x) * (b.x - a.x) + (p.y - a.y) * (b.y - a.y)) / l2;
+            t = Math.max(0, Math.min(1, t));
+            return Math.sqrt((p.x - (a.x + t * (b.x - a.x)))**2 + (p.y - (a.y + t * (b.y - a.y)))**2);
+        }
+
+        function drawMap() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#090d16'; ctx.fillRect(0, 0, 800, 500); 
+            ctx.fillStyle = '#1e293b'; ctx.fillRect(0, 0, 130, 130); 
+
+            ctx.save();
+            let sunGrad = ctx.createLinearGradient(0, 45, 0, 75);
+            sunGrad.addColorStop(0, 'rgba(254, 240, 138, 0.3)');
+            sunGrad.addColorStop(0.5, 'rgba(254, 240, 138, 0.6)');
+            sunGrad.addColorStop(1, 'rgba(234, 179, 8, 0.1)');
+            ctx.fillStyle = sunGrad; ctx.fillRect(0, 45, 140, 30);
+            ctx.restore();
+
+            ctx.save();
+            if (!isRevealed) {
+                ctx.beginPath();
+                ctx.arc(45, 70, 70, 0, Math.PI * 2); 
+                state.hitPoints.forEach(pt => {
+                    ctx.moveTo(pt.x + 30, pt.y);
+                    ctx.arc(pt.x, pt.y, 30, 0, Math.PI * 2); 
+                });
+                ctx.clip(); 
+            }
+
+            ctx.fillStyle = '#78350f'; ctx.strokeStyle = '#451a03'; ctx.lineWidth = 4;
+            
+            state.walls.forEach(w => {
+                let wStart = Math.min(w.p1.x, w.p2.x);
+                let wEnd = Math.max(w.p1.x, w.p2.x);
+                
+                let validOps = stageData[currentStage].openings.filter(op => op.s >= wStart && op.e <= wEnd);
+                
+                if (validOps.length > 0) {
+                    validOps.sort((a, b) => a.s - b.s);
+                    let currentX = wStart;
+                    validOps.forEach(op => {
+                        if (op.s > currentX) {
+                            ctx.fillRect(currentX, w.p1.y - 7, op.s - currentX, 14);
+                            ctx.strokeRect(currentX, w.p1.y - 7, op.s - currentX, 14);
+                        }
+                        currentX = op.e;
+                    });
+                    if (wEnd > currentX) {
+                        ctx.fillRect(currentX, w.p1.y - 7, wEnd - currentX, 14);
+                        ctx.strokeRect(currentX, w.p1.y - 7, wEnd - currentX, 14);
+                    }
+                } else {
+                    ctx.fillRect(wStart, w.p1.y - 7, wEnd - wStart, 14);
+                    ctx.strokeRect(wStart, w.p1.y - 7, wEnd - wStart, 14);
+                }
+            });
+            ctx.restore();
+
+            ctx.font = 'bold 13px sans-serif'; ctx.fillStyle = '#f59e0b';
+            ctx.fillText('☀️ 태양광 진입구', 15, 65);
+        }
+
+        function drawLightPaths() {
+            ctx.save();
+            ctx.strokeStyle = '#fef08a'; ctx.lineWidth = 4;
+            ctx.shadowBlur = 15; ctx.shadowColor = '#eab308';
+            state.raySegments.forEach(seg => {
+                ctx.beginPath(); ctx.moveTo(seg.from.x, seg.from.y); ctx.lineTo(seg.to.x, seg.to.y); ctx.stroke();
+            });
+            ctx.restore();
+
+            ctx.save();
+            ctx.shadowBlur = 0; ctx.strokeStyle = '#94a3b8'; ctx.setLineDash([4, 4]);
+            state.normalLines.forEach(line => {
+                ctx.beginPath(); ctx.moveTo(line.from.x, line.from.y); ctx.lineTo(line.to.x, line.to.y); ctx.stroke();
+            });
+            ctx.restore();
+
+            ctx.save();
+            ctx.fillStyle = '#ef4444';
+            state.wallHits.forEach(pt => {
+                ctx.beginPath(); ctx.arc(pt.x, pt.y, 4, 0, Math.PI*2); ctx.fill();
+            });
+            ctx.restore();
+        }
+
+        function drawEntities() {
+            state.mirrors.forEach((m, idx) => {
+                let seg = getMirrorSegments(m);
+                ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 6;
+                ctx.beginPath(); ctx.moveTo(seg.p1.x, seg.p1.y); ctx.lineTo(seg.p2.x, seg.p2.y); ctx.stroke();
+
+                ctx.fillStyle = '#10b981';
+                ctx.beginPath(); ctx.arc(seg.p1.x, seg.p1.y, 6, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.arc(seg.p2.x, seg.p2.y, 6, 0, Math.PI*2); ctx.fill();
+                
+                ctx.fillStyle = '#94a3b8'; ctx.font = '11px sans-serif';
+                ctx.fillText(`거울 ${idx+1}`, m.x + 15, m.y - 12);
+            });
+
+            ctx.font = '32px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(state.archaeologist.emoji, state.archaeologist.x, state.archaeologist.y);
+
+            ctx.save();
+            if (!isRevealed) {
+                ctx.beginPath();
+                ctx.arc(45, 70, 70, 0, Math.PI * 2);
+                state.hitPoints.forEach(pt => {
+                    ctx.moveTo(pt.x + 30, pt.y);
+                    ctx.arc(pt.x, pt.y, 30, 0, Math.PI * 2);
+                });
+                ctx.clip();
+            }
+
+            if (isTreasureFound || isRevealed) {
+                ctx.save(); ctx.shadowBlur = 30; ctx.shadowColor = '#f59e0b';
+                ctx.fillText(state.treasure.emoji, state.treasure.x, state.treasure.y);
+                ctx.restore();
+            }
+
+            state.traps.forEach(t => {
+                ctx.fillText(t.emoji, t.x, t.y);
+            });
+            ctx.restore();
+        }
+
+        function castRayEngine() {
+            isTreasureFound = false;
+            isTrapTriggered = false;
+            triggeredTrapEmoji = '';
+            
+            state.hitPoints = [];
+            state.raySegments = [];
+            state.normalLines = [];
+            state.wallHits = [];
+            angleContainer.innerHTML = ''; 
+
+            let rayStart = { x: 0, y: 60 }; 
+            let rayDir = { x: 1, y: 0 }; 
+
+            let currentMirrors = [...state.mirrors];
+            let lastHitMirrorIdx = -1;
+
+            const EPSILON = 0.1;
+
+            for (let bounce = 0; bounce < 5; bounce++) {
+                let closestHit = null;
+                let minDist = Infinity;
+                let hitType = ''; 
+                let hitObj = null;
+                let hitIdx = -1;
+
+                // 1. 벽 충돌 검사
+                state.walls.forEach(w => {
+                    let hit = lineIntersection(rayStart, { x: rayStart.x + rayDir.x * 2000, y: rayStart.y + rayDir.y * 2000 }, w.p1, w.p2);
+                    if (hit) {
+                        let isInsideOpening = false;
+                        let wStart = Math.min(w.p1.x, w.p2.x);
+                        let wEnd = Math.max(w.p1.x, w.p2.x);
+                        
+                        stageData[currentStage].openings.forEach(op => {
+                            if (op.s >= wStart && op.e <= wEnd) {
+                                if (hit.x >= op.s && hit.x <= op.e) {
+                                    isInsideOpening = true;
+                                }
+                            }
+                        });
+
+                        if (!isInsideOpening) {
+                            let d = Math.sqrt((hit.x - rayStart.x)**2 + (hit.y - rayStart.y)**2);
+                            if (d < minDist && d > EPSILON) { minDist = d; closestHit = hit; hitType = 'wall'; }
+                        }
+                    }
+                });
+
+                // 2. 거울 충돌 검사
+                currentMirrors.forEach((m, idx) => {
+                    if (idx === lastHitMirrorIdx) return;
+                    let seg = getMirrorSegments(m);
+                    let hit = lineIntersection(rayStart, { x: rayStart.x + rayDir.x * 2000, y: rayStart.y + rayDir.y * 2000 }, seg.p1, seg.p2);
+                    if (hit) {
+                        let d = Math.sqrt((hit.x - rayStart.x)**2 + (hit.y - rayStart.y)**2);
+                        if (d < minDist && d > EPSILON) { minDist = d; closestHit = hit; hitType = 'mirror'; hitObj = m; hitIdx = idx; }
+                    }
+                });
+
+                // 3. 함정 충돌 검사
+                state.traps.forEach(t => {
+                    let extendedEndPoint = { x: rayStart.x + rayDir.x * 2000, y: rayStart.y + rayDir.y * 2000 };
+                    if (pointToSegDist(t, rayStart, extendedEndPoint) < t.radius) {
+                        let d = Math.sqrt((t.x - rayStart.x)**2 + (t.y - rayStart.y)**2);
+                        if (d < minDist && d > 10) { minDist = d; closestHit = { x: t.x, y: t.y }; hitType = 'trap'; hitObj = t; }
+                    }
+                });
+
+                if (!closestHit) {
+                    let endP = { x: rayStart.x + rayDir.x * 1000, y: rayStart.y + rayDir.y * 1000 };
+                    if (pointToSegDist(state.treasure, rayStart, endP) < state.treasure.radius) { 
+                        isTreasureFound = true; 
+                        state.hitPoints.push({ x: state.treasure.x, y: state.treasure.y });
+                    }
+                    state.raySegments.push({ from: {x: rayStart.x, y: rayStart.y}, to: {x: endP.x, y: endP.y} });
+                    break;
+                }
+
+                if (pointToSegDist(state.treasure, rayStart, closestHit) < state.treasure.radius) { 
+                    isTreasureFound = true; 
+                    state.hitPoints.push({ x: state.treasure.x, y: state.treasure.y });
+                }
+
+                state.hitPoints.push({ x: closestHit.x, y: closestHit.y });
+                state.raySegments.push({ from: {x: rayStart.x, y: rayStart.y}, to: {x: closestHit.x, y: closestHit.y} });
+
+                if (hitType === 'wall') {
+                    state.wallHits.push({ x: closestHit.x, y: closestHit.y });
+                    break; 
+                }
+
+                if (hitType === 'trap') {
+                    isTrapTriggered = true; triggeredTrapEmoji = hitObj.emoji;
+                    state.hitPoints.push({ x: closestHit.x, y: closestHit.y }); 
+                    break;
+                }
+
+                if (hitType === 'mirror') {
+                    let seg = getMirrorSegments(hitObj);
+                    let dot = rayDir.x * seg.normal.x + rayDir.y * seg.normal.y;
+                    let normal = { x: seg.normal.x, y: seg.normal.y };
+                    if (dot > 0) { normal.x = -normal.x; normal.y = -normal.y; dot = -dot; }
+
+                    rayDir = { x: rayDir.x - 2 * dot * normal.x, y: rayDir.y - 2 * dot * normal.y };
+                    let angleDeg = Math.round(Math.acos(Math.abs(dot)) * 180 / Math.PI);
+                    
+                    let pTag = document.createElement('div');
+                    pTag.innerText = `거울 ${hitIdx+1} ➡️ 입사각: ${angleDeg}° | 반사각: ${angleDeg}°`;
+                    angleContainer.appendChild(pTag);
+
+                    state.normalLines.push({
+                        from: {x: closestHit.x - normal.x*35, y: closestHit.y - normal.y*35},
+                        to: {x: closestHit.x + normal.x*35, y: closestHit.y + normal.y*35}
+                    });
+
+                    rayStart = {
+                        x: closestHit.x + rayDir.x * EPSILON,
+                        y: closestHit.y + rayDir.y * EPSILON
+                    };
+                    lastHitMirrorIdx = hitIdx;
+                }
+            }
+        }
+
+        function drawTelescopeView() {
+            viewCtx.clearRect(0, 0, viewCanvas.width, viewCanvas.height);
+            viewCtx.textAlign = 'center'; viewCtx.textBaseline = 'middle';
+
+            if (state.inspectedType === 'trap') {
+                statusDiv.innerHTML = "☠️ 해골 발견! 피해서 가자..."; statusDiv.className = "scared";
+                nextBtn.style.display = 'none'; 
+                viewCtx.fillStyle = '#2d1414'; viewCtx.fillRect(0, 0, viewCanvas.width, viewCanvas.height);
+                viewCtx.font = '50px sans-serif'; viewCtx.fillText(triggeredTrapEmoji || '☠️', viewCanvas.width/2, viewCanvas.height/2);
+            } 
+            else if (isTreasureFound && state.inspectedType === 'relic') {
+                statusDiv.innerHTML = `🎉 발견: ${state.treasure.name}!`; statusDiv.className = "success";
+                
+                nextBtn.style.display = 'block';
+                if(currentStage === 3) {
+                    nextBtn.innerText = "🔄 처음으로";
+                    nextBtn.style.background = "#f59e0b";
+                } else {
+                    nextBtn.innerText = "다음 스테이지로 ➡️";
+                    nextBtn.style.background = "#10b981";
+                }
+
+                viewCtx.fillStyle = '#020617'; viewCtx.fillRect(0, 0, viewCanvas.width, viewCanvas.height);
+                viewCtx.strokeStyle = '#eab308'; viewCtx.lineWidth = 2;
+                viewCtx.beginPath(); viewCtx.arc(viewCanvas.width/2, viewCanvas.height/2, 45, 0, Math.PI*2); viewCtx.stroke();
+                viewCtx.font = '50px sans-serif'; viewCtx.fillText(state.treasure.emoji, viewCanvas.width/2, viewCanvas.height/2);
+            } else {
+                statusDiv.innerHTML = "❌ 어둠뿐입니다... (수색 중)"; statusDiv.className = "fail";
+                nextBtn.style.display = 'none'; 
+                viewCtx.fillStyle = '#000000'; viewCtx.fillRect(0, 0, viewCanvas.width, viewCanvas.height);
+                viewCtx.strokeStyle = '#334155'; viewCtx.lineWidth = 1;
+                viewCtx.beginPath(); viewCtx.moveTo(0, 75); viewCtx.lineTo(250, 75); viewCtx.stroke();
+                viewCtx.beginPath(); viewCtx.moveTo(125, 0); viewCtx.lineTo(125, 150); viewCtx.stroke();
+            }
+        }
+
+        function getMousePos(e) { const r = canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+        function dist(p1, p2) { return Math.sqrt((p1.x-p2.x)**2 + (p1.y-p2.y)**2); }
+
+        canvas.addEventListener('mousedown', (e) => {
+            let m = getMousePos(e);
+            
+            if (isTreasureFound && dist(m, state.treasure) < state.treasure.radius + 15) {
+                state.inspectedType = 'relic';
+                isRevealed = true; 
+                update();
+                return; 
+            }
+
+            if (isTrapTriggered) {
+                for (let i = 0; i < state.traps.length; i++) {
+                    if (dist(m, state.traps[i]) < state.traps[i].radius + 15) {
+                        state.inspectedType = 'trap';
+                        update();
+                        return;
+                    }
+                }
+            }
+
+            state.inspectedType = null;
+
+            for (let i = 0; i < state.mirrors.length; i++) {
+                let mirror = state.mirrors[i]; let seg = getMirrorSegments(mirror);
+                if (dist(m, seg.p1) < 12) { state.dragged = { type: 'rotate', index: i, anchor: seg.p2 }; return; }
+                if (dist(m, seg.p2) < 12) { state.dragged = { type: 'rotate', index: i, anchor: seg.p1 }; return; }
+                if (dist(m, mirror) < 25) { state.dragged = { type: 'move', index: i, ox: mirror.x - m.x, oy: mirror.y - m.y }; return; }
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (!state.dragged) return;
+            let m = getMousePos(e);
+            
+            state.inspectedType = null; 
+
+            if (state.dragged.type === 'move') {
+                let mir = state.mirrors[state.dragged.index]; mir.x = m.x + state.dragged.ox; mir.y = m.y + state.dragged.oy;
+            }
+            if (state.dragged.type === 'rotate') {
+                let mir = state.mirrors[state.dragged.index]; let anchor = state.dragged.anchor;
+                let angleRad = Math.atan2(m.y - anchor.y, m.x - anchor.x);
+                mir.angleDeg = angleRad * 180 / Math.PI;
+                mir.x = anchor.x + Math.cos(angleRad) * (mir.length / 2); mir.y = anchor.y + Math.sin(angleRad) * (mir.length / 2);
+            }
+            update();
+        });
+
+        window.addEventListener('mouseup', () => { state.dragged = null; });
+
+        function update() {
+            castRayEngine();   
+            drawMap();         
+            drawLightPaths();  
+            drawEntities();    
+            drawTelescopeView();
+        }
+
+        function getTouchPos(e) {
+            const r = canvas.getBoundingClientRect();
+            const touch = e.touches[0];
+            return { x: touch.clientX - r.left, y: touch.clientY - r.top };
+        }
+
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            let m = getTouchPos(e);
+            
+            if (isTreasureFound && dist(m, state.treasure) < 40) {
+                state.inspectedType = 'relic';
+                isRevealed = true; 
+                update();
+                return;
+            }
+
+            if (isTrapTriggered) {
+                for (let i = 0; i < state.traps.length; i++) {
+                    if (dist(m, state.traps[i]) < 40) {
+                        state.inspectedType = 'trap';
+                        update();
+                        return;
+                    }
+                }
+            }
+
+            state.inspectedType = null;
+            for (let i = 0; i < state.mirrors.length; i++) {
+                let mirror = state.mirrors[i]; let seg = getMirrorSegments(mirror);
+                if (dist(m, seg.p1) < 20) { state.dragged = { type: 'rotate', index: i, anchor: seg.p2 }; return; }
+                if (dist(m, seg.p2) < 20) { state.dragged = { type: 'rotate', index: i, anchor: seg.p1 }; return; }
+                if (dist(m, mirror) < 30) { state.dragged = { type: 'move', index: i, ox: mirror.x - m.x, oy: mirror.y - m.y }; return; }
+            }
+        }, {passive: false});
+
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (!state.dragged) return;
+            let m = getTouchPos(e);
+            state.inspectedType = null; 
+            if (state.dragged.type === 'move') {
+                let mir = state.mirrors[state.dragged.index]; 
+                mir.x = m.x + state.dragged.ox; mir.y = m.y + state.dragged.oy;
+            } else if (state.dragged.type === 'rotate') {
+                let mir = state.mirrors[state.dragged.index]; let anchor = state.dragged.anchor;
+                let angleRad = Math.atan2(m.y - anchor.y, m.x - anchor.x);
+                mir.angleDeg = angleRad * 180 / Math.PI;
+                mir.x = anchor.x + Math.cos(angleRad) * (mir.length / 2); mir.y = anchor.y + Math.sin(angleRad) * (mir.length / 2);
+            }
+            update();
+        }, {passive: false});
+
+        window.addEventListener('touchend', () => { state.dragged = null; });
+    </script>
+</body>
+</html>
