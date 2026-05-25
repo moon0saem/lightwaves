@@ -482,7 +482,12 @@
                 viewCtx.font = '50px sans-serif'; viewCtx.fillText(triggeredTrapEmoji || '☠️', viewCanvas.width/2, viewCanvas.height/2);
             } 
             else if (isTreasureFound && state.inspectedType === 'relic') {
-                statusDiv.innerHTML = `🎉 발견: ${state.treasure.name}!`; statusDiv.className = "success";
+                if (currentStage === 3) {
+                    statusDiv.innerHTML = `🎉 발견: ${state.treasure.name}!<br><span style="font-size: 12px; font-weight: normal; color: #94a3b8;">💡 피라미드 내부 구조를 추론해보세요!</span>`;
+                } else {
+                    statusDiv.innerHTML = `🎉 발견: ${state.treasure.name}!`;
+                }
+                statusDiv.className = "success";
                 
                 nextBtn.style.display = 'block';
                 if(currentStage === 3) {
@@ -515,11 +520,13 @@
             
             if (isTreasureFound && dist(m, state.treasure) < state.treasure.radius + 15) {
                 state.inspectedType = 'relic';
-                isRevealed = true; 
+                if (currentStage !== 3) isRevealed = true;
                 update();
                 return; 
             }
 
+          
+          
             if (isTrapTriggered) {
                 for (let i = 0; i < state.traps.length; i++) {
                     if (dist(m, state.traps[i]) < state.traps[i].radius + 15) {
@@ -580,7 +587,7 @@
             
             if (isTreasureFound && dist(m, state.treasure) < 40) {
                 state.inspectedType = 'relic';
-                isRevealed = true; 
+                if (currentStage !== 3) isRevealed = true;
                 update();
                 return;
             }
